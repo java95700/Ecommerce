@@ -24,6 +24,7 @@ import "dotenv/config.js";
 import cookieParser from "cookie-parser";
 import { requiredUserData } from "./common/passportAuthorization.js";
 import Stripe from "stripe";
+import order from "./model/order.js";
 const stripe = new Stripe(process.env.STRIPE_KEY);
 
 const server = Express();
@@ -39,7 +40,7 @@ opts.secretOrKey = process.env.JWT_SECRET_KEY;
 server.post(
   "/webhook",
   Express.raw({ type: "application/json" }),
-  (request, response) => {
+  async (request, response) => {
     const sig = request.headers["stripe-signature"];
 
     let event;
@@ -57,6 +58,22 @@ server.post(
 
     // Handle the event
     console.log(`Unhandled event type ${event.type}`);
+    console.log(`Unhandled event type ${event.data.object}`);
+    // switch (event.type) {
+    //   case 'payment_intent.succeeded':
+    //     const paymentIntentSucceeded = event.data.object;
+
+    //     const order = await order.findById(
+    //       paymentIntentSucceeded.metadata.orderId
+    //     );
+    //     order.paymentStatus = 'received';
+    //     await order.save();
+
+    //     break;
+    //   // ... handle other event types
+    //   default:
+    //     console.log(`Unhandled event type ${event.type}`);
+    // }
 
     // Return a 200 response to acknowledge receipt of the event
     response.send();
@@ -95,7 +112,7 @@ server.use(Express.static(path.resolve("build")));
 
 // Enable CORS with specific options
 server.use(cors(corsOptions));
-server.use(Express.json()); 
+server.use(Express.json());
 // server.use(Express.raw({ type: "application/json" }));
 server.use("/products", productRouter);
 server.use("/categories", categoryRouter);
@@ -176,12 +193,6 @@ passport.deserializeUser(function (user, cb) {
 // };
 
 //Payment
-const calculateOrderAmount = (items) => {
-  // Replace this constant with a calculation of the order's amount
-  // Calculate the order total on the server to prevent
-  // people from directly manipulating the amount on the client
-  return 1400;
-};
 
 server.post("/create-payment-intent", async (req, res) => {
   const { totalPrice, orderId } = req.body;
